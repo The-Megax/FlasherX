@@ -2,6 +2,8 @@
 // FXUTIL.H -- FlasherX utility functions
 //******************************************************************************
 #include <Arduino.h>
+#include "FlasherX.h"
+
 extern "C" {
   #include "FlashTxx.h"		// TLC/T3x/T4x/TMM flash primitives
 }
@@ -48,10 +50,25 @@ void update_firmware( Stream *in, Stream *out,
     0, 0						//   eof,lines
   };
 
-  out->printf( "reading hex lines...\n" );
+  out->printf( "FlasherX: reading hex lines...\n" );
+
+  unsigned long led_millis = millis();
+  bool is_led_high = true;
+  const int led = LED_BUILTIN;
 
   // read and process intel hex lines until EOF or error
   while (!hex.eof)  {
+    if(is_led_high) {
+	  digitalWrite(led, HIGH);
+	}
+	else {
+	  digitalWrite(led, LOW);
+	}
+
+    if(millis() - led_millis > 100) {
+		led_millis = millis();
+		is_led_high = !is_led_high;
+	}
 
     read_ascii_line( in, line, sizeof(line) );
     // reliability of transfer via USB is improved by this printf/flush
@@ -61,16 +78,16 @@ void update_firmware( Stream *in, Stream *out,
     }
 
     if (parse_hex_line( (const char*)line, hex.data, &hex.addr, &hex.num, &hex.code ) == 0) {
-      out->printf( "abort - bad hex line %s\n", line );
+      out->printf( "FlasherX: abort - bad hex line %s\n", line );
     }
     else if (process_hex_record( &hex ) != 0) { // error on bad hex code
-      out->printf( "abort - invalid hex code %d\n", hex.code );
+      out->printf( "FlasherX: abort - invalid hex code %d\n", hex.code );
       return;
     }
     else if (hex.code == 0) { // if data record
       uint32_t addr = buffer_addr + hex.base + hex.addr - FLASH_BASE_ADDR;
       if (hex.max > (FLASH_BASE_ADDR + buffer_size)) {
-        out->printf( "abort - max address %08lX too large\n", hex.max );
+        out->printf( "FlasherX: abort - max address %08lX too large\n", hex.max );
         return;
       }
       else if (!IN_FLASH(buffer_addr)) {
@@ -79,55 +96,67 @@ void update_firmware( Stream *in, Stream *out,
       else if (IN_FLASH(buffer_addr)) {
         int error = flash_write_block( addr, hex.data, hex.num );
         if (error) {
-          out->printf( "abort - error %02X in flash_write_block()\n", error );
-	  return;
+          out->printf( "FlasherX: abort - error %02X in flash_write_block()\n", error );
+	      return;
         }
       }
     }
     hex.lines++;
   }
     
-  out->printf( "\nhex file: %1d lines %1lu bytes (%08lX - %08lX)\n",
+  out->printf( "\nFlasherX: hex file: %1d lines %1lu bytes (%08lX - %08lX)\n",
 			hex.lines, hex.max-hex.min, hex.min, hex.max );
 
   // check FSEC value in new code -- abort if incorrect
   #if defined(KINETISK) || defined(KINETISL)
   uint32_t value = *(uint32_t *)(0x40C + buffer_addr);
   if (value == 0xfffff9de) {
-    out->printf( "new code contains correct FSEC value %08lX\n", value );
+    out->printf( "FlasherX: new code contains correct FSEC value %08lX\n", value );
   }
   else {
-    out->printf( "abort - FSEC value %08lX should be FFFFF9DE\n", value );
+    out->printf( "FlasherX: abort - FSEC value %08lX should be FFFFF9DE\n", value );
     return;
   } 
   #endif
 
   // check FLASH_ID in new code - abort if not found
   if (check_flash_id( buffer_addr, hex.max - hex.min )) {
-    out->printf( "new code contains correct target ID %s\n", FLASH_ID );
+    out->printf( "FlasherX: new code contains correct target ID %s\n", FLASH_ID );
   }
   else {
-    out->printf( "abort - new code missing string %s\n", FLASH_ID );
+    out->printf( "FlasherX: abort - new code missing string %s\n", FLASH_ID );
     return;
   }
-  
+
+#if !DISABLE_CODE_CHECK
   // get user input to write to flash or abort
   int user_lines = -1;
   while (user_lines != hex.lines && user_lines != 0) {
-    out->printf( "enter %d to flash or 0 to abort\n", hex.lines );
+    out->printf( "FlasherX: enter %d to flash or 0 to abort\n", hex.lines );
     read_ascii_line( out, line, sizeof(line) );
     sscanf( line, "%d", &user_lines );
   }
   
   if (user_lines == 0) {
-    out->printf( "abort - user entered 0 lines\n" );
+    out->printf( "FlasherX: abort - user entered 0 lines\n" );
     return;
   }
   else {
-    out->printf( "calling flash_move() to load new firmware...\n" );
+    out->printf( "FlasherX: calling flash_move() to load new firmware...\n" );
     out->flush();
   }
-  
+#else
+  out->printf( "FlasherX: calling flash_move() to load new firmware...\n" );
+  out->flush();
+#endif
+
+  if(is_sd_flash) {
+    SD_flash.remove(HEX_FILE_NAME);
+  }
+
+  digitalWrite(led, HIGH);
+  delay(100);
+
   // move new program from buffer to flash, free buffer, and reboot
   flash_move( FLASH_BASE_ADDR, buffer_addr, hex.max-hex.min );
 
