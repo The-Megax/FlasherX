@@ -1,11 +1,11 @@
-#ifndef __FLASHERX_H
-#define __FLASHERX_H
+#ifndef __FLASHERX_H_
+#define __FLASHERX_H_
 
 #define NATIVE_SD 0
 #define DISABLE_CODE_CHECK 1
 
 #if NATIVE_SD
-//#include <SD.h>
+/*#include <SD.h>*/
 #define SD_flash SD
 #else
 #include <sdfat.h>

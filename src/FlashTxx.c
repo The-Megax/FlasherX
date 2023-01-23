@@ -27,11 +27,11 @@ static int leave_interrupts_disabled = 0;
 //******************************************************************************
 int firmware_buffer_init( uint32_t *buffer_addr, uint32_t *buffer_size )
 {
-  #if defined(__MK66FX1M0__)     // for T3.6 only
+#if defined(__MK66FX1M0__)     // for T3.6 only
   LMEM_EnableCodeCache( false ); // disable LMEM code cache for flash operations
-  #endif
+#endif
 
-  #if defined(__IMXRT1062__) && (RAM_BUFFER_SIZE > 0)
+#if defined(__IMXRT1062__) && (RAM_BUFFER_SIZE > 0)
   // attempt to malloc() RAM for buffer and return success or failure
   *buffer_addr = (uint32_t)malloc( RAM_BUFFER_SIZE );
   if (*buffer_addr != 0) {
@@ -40,7 +40,18 @@ int firmware_buffer_init( uint32_t *buffer_addr, uint32_t *buffer_size )
     return( RAM_BUFFER_TYPE );
   }
   return( NO_BUFFER_TYPE );
-  #endif
+#endif
+
+#if defined(__IMXRT1062__) && (PSRAM_BUFFER_SIZE > 0)
+  // attempt to malloc() RAM for buffer and return success or failure
+  *buffer_addr = (uint32_t)extmem_malloc( PSRAM_BUFFER_SIZE );
+  if (*buffer_addr != 0) {
+    *buffer_size = PSRAM_BUFFER_SIZE;
+    memset( (void*)*buffer_addr, 0xFF, *buffer_size ); // 0xFF like erased flash
+    return( PSRAM_BUFFER_TYPE );
+  }
+  return( NO_BUFFER_TYPE );
+#endif
 
   // buffer will begin at first sector ABOVE code and below FLASH_RESERVE
   // start at bottom of FLASH_RESERVE and work down until non-erased flash found
@@ -64,8 +75,13 @@ void firmware_buffer_free( uint32_t buffer_addr, uint32_t buffer_size )
 {
   if (IN_FLASH(buffer_addr))
     flash_erase_block( buffer_addr, buffer_size );
-  else
+  else {
+#if defined(__IMXRT1062__) && (PSRAM_BUFFER_SIZE > 0)
+    extmem_free((void*)buffer_addr);
+#else
     free( (void*)buffer_addr );
+#endif
+  }
 }
 
 //******************************************************************************

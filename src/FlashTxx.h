@@ -78,6 +78,7 @@
 
 #if defined(FLASH_ID)
   #define RAM_BUFFER_SIZE	(0 * 1024)
+  #define PSRAM_BUFFER_SIZE	(8000 * 1024)		// 8MB
   #define IN_FLASH(a) ((a) >= FLASH_BASE_ADDR && (a) < FLASH_BASE_ADDR+FLASH_SIZE)
 #endif
 
@@ -89,6 +90,7 @@
 #define NO_BUFFER_TYPE		(0)
 #define FLASH_BUFFER_TYPE	(1)
 #define RAM_BUFFER_TYPE		(2)
+#define PSRAM_BUFFER_TYPE	(3)
 
 // apparently better - thanks to Frank Boesing
 #define RAMFUNC __attribute__ ((section(".fastrun"), noinline, noclone, optimize("Os") ))

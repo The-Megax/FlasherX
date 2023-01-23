@@ -79,7 +79,7 @@ PROGMEM const uint8_t a[16][16][16][16][16] = A4;
 #endif
 
 void FlasherX() {
-	pinMode(led, OUTPUT);	// assign output
+    pinMode(led, OUTPUT);	// assign output
     serial->printf("%s - %s %s\n", FLASHERX_VERSION, __DATE__, __TIME__ );
     serial->printf("FlasherX: WARNING: this can ruin your device!\n" );
     serial->printf("FlasherX: target = %s (%dK flash in %dK sectors)\n", FLASH_ID, FLASH_SIZE/1024, FLASH_SECTOR_SIZE/1024);

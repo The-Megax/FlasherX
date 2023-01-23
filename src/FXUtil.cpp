@@ -59,16 +59,16 @@ void update_firmware( Stream *in, Stream *out,
   // read and process intel hex lines until EOF or error
   while (!hex.eof)  {
     if(is_led_high) {
-	  digitalWrite(led, HIGH);
-	}
-	else {
-	  digitalWrite(led, LOW);
-	}
+      digitalWrite(led, HIGH);
+    }
+    else {
+      digitalWrite(led, LOW);
+    }
 
     if(millis() - led_millis > 100) {
-		led_millis = millis();
-		is_led_high = !is_led_high;
-	}
+      led_millis = millis();
+      is_led_high = !is_led_high;
+    }
 
     read_ascii_line( in, line, sizeof(line) );
     // reliability of transfer via USB is improved by this printf/flush
@@ -108,7 +108,7 @@ void update_firmware( Stream *in, Stream *out,
 			hex.lines, hex.max-hex.min, hex.min, hex.max );
 
   // check FSEC value in new code -- abort if incorrect
-  #if defined(KINETISK) || defined(KINETISL)
+#if defined(KINETISK) || defined(KINETISL)
   uint32_t value = *(uint32_t *)(0x40C + buffer_addr);
   if (value == 0xfffff9de) {
     out->printf( "FlasherX: new code contains correct FSEC value %08lX\n", value );
@@ -117,7 +117,7 @@ void update_firmware( Stream *in, Stream *out,
     out->printf( "FlasherX: abort - FSEC value %08lX should be FFFFF9DE\n", value );
     return;
   } 
-  #endif
+#endif
 
   // check FLASH_ID in new code - abort if not found
   if (check_flash_id( buffer_addr, hex.max - hex.min )) {
@@ -128,7 +128,7 @@ void update_firmware( Stream *in, Stream *out,
     return;
   }
 
-#if !DISABLE_CODE_CHECK
+#if !DISABLE_CODE_CHECK /* Only test */
   // get user input to write to flash or abort
   int user_lines = -1;
   while (user_lines != hex.lines && user_lines != 0) {
