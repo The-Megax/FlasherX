@@ -8,6 +8,10 @@ extern "C" {
   #include "FlashTxx.h"		// TLC/T3x/T4x/TMM flash primitives
 }
 
+#if CHECK_EEPROM_UPDATE_ENABLED
+#include <EEPROM.h>
+#endif
+
 //******************************************************************************
 // hex_info_t	struct for hex record and hex file info
 //******************************************************************************
@@ -51,6 +55,10 @@ void update_firmware( Stream *in, Stream *out,
   };
 
   out->printf( "FlasherX: reading hex lines...\n" );
+  crc_t crc32_temp;
+
+  if(is_sd_flash)
+    crc32_temp = crc_init();
 
   unsigned long led_millis = millis();
   bool is_led_high = true;
@@ -70,17 +78,20 @@ void update_firmware( Stream *in, Stream *out,
       is_led_high = !is_led_high;
     }
 
-    read_ascii_line( in, line, sizeof(line) );
+    read_ascii_line(in, line, sizeof(line) );
     // reliability of transfer via USB is improved by this printf/flush
     if (in == out && out == (Stream*)&Serial) {
-      out->printf( "%s\n", line );
+      out->printf("%s\n", line);
       out->flush();
     }
 
-    if (parse_hex_line( (const char*)line, hex.data, &hex.addr, &hex.num, &hex.code ) == 0) {
+    if(is_sd_flash)
+      crc32_temp = crc_update(crc32_temp, (uint8_t const *)line, strlen(line));
+
+    if (parse_hex_line((const char*)line, hex.data, &hex.addr, &hex.num, &hex.code) == 0) {
       out->printf( "FlasherX: abort - bad hex line %s\n", line );
     }
-    else if (process_hex_record( &hex ) != 0) { // error on bad hex code
+    else if (process_hex_record(&hex ) != 0) { // error on bad hex code
       out->printf( "FlasherX: abort - invalid hex code %d\n", hex.code );
       return;
     }
@@ -120,12 +131,24 @@ void update_firmware( Stream *in, Stream *out,
 #endif
 
   // check FLASH_ID in new code - abort if not found
-  if (check_flash_id( buffer_addr, hex.max - hex.min )) {
-    out->printf( "FlasherX: new code contains correct target ID %s\n", FLASH_ID );
+  if (check_flash_id(buffer_addr, hex.max - hex.min)) {
+    out->printf("FlasherX: new code contains correct target ID %s\n", FLASH_ID);
   }
   else {
-    out->printf( "FlasherX: abort - new code missing string %s\n", FLASH_ID );
+    out->printf("FlasherX: abort - new code missing string %s\n", FLASH_ID);
     return;
+  }
+
+  if(is_sd_flash) {
+    crc32_temp = crc_finalize(crc32_temp);
+    Serial.printf("Final crc32 code: %lu\n", crc32_temp);
+
+    if(sd_file_checksum != crc32_temp) {
+      Serial.printf("FlasherX: Checksum error. File not valid! CRC32 file: %lu, CRC32 checksum file: %lu\n", crc32_temp, sd_file_checksum);
+      return;
+    }
+
+    Serial.println("FlasherX: Checksum ok.");
   }
 
 #if !DISABLE_CODE_CHECK /* Only test */
@@ -151,8 +174,13 @@ void update_firmware( Stream *in, Stream *out,
 #endif
 
   if(is_sd_flash) {
-    SD_flash.remove(HEX_FILE_NAME);
+    SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+    SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
   }
+
+#if CHECK_EEPROM_UPDATE_ENABLED
+  EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
 
   digitalWrite(led, HIGH);
   delay(100);

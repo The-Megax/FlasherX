@@ -53,7 +53,12 @@ extern "C" {
   #include "FlashTxx.h"		// TLC/T3x/T4x/TMM flash primitives
 }
 
+#if CHECK_EEPROM_UPDATE_ENABLED
+#include <EEPROM.h>
+#endif
+
 bool is_sd_flash = true;
+uint32_t sd_file_checksum = 0;
 #if !NATIVE_SD
 SdFat SD_flash;
 #endif
@@ -79,6 +84,12 @@ PROGMEM const uint8_t a[16][16][16][16][16] = A4;
 #endif
 
 void FlasherX() {
+#if CHECK_EEPROM_UPDATE_ENABLED
+    bool update_enabled = EEPROM.read(FLASHERX_EEPROM_ID); 
+    if(!update_enabled)
+        return;
+#endif
+
     pinMode(led, OUTPUT);	// assign output
     serial->printf("%s - %s %s\n", FLASHERX_VERSION, __DATE__, __TIME__ );
     serial->printf("FlasherX: WARNING: this can ruin your device!\n" );
@@ -91,16 +102,71 @@ void FlasherX() {
     if (!SD_flash.begin(BUILTIN_SDCARD)) {
         serial->println("FlasherX: SD initialization failed");
         serial->println("FlasherX: abort flashing");
+#if CHECK_EEPROM_UPDATE_ENABLED
+        EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
         return;
     }
 
+    FsFile checkfile = SD_flash.open(FLASHERX_CHECKSUM_FILE_NAME);
+    if(!checkfile) {
+        serial->print("FlasherX: ");
+        serial->print(FLASHERX_CHECKSUM_FILE_NAME);
+        serial->println(" file open failed");
+        serial->println("FlasherX: abort flashing");
+        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+        SD_flash.end();
+#if CHECK_EEPROM_UPDATE_ENABLED
+        EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
+        return;
+    }
+
+    unsigned int i = 0;
+    char buffer_line[100] = {0};
+
+    while(checkfile.available()) {
+        char readed_char = checkfile.read();
+
+        if(i >= sizeof(buffer_line)) {
+            serial->println("FlasherX: sd read buffer overflow");
+            checkfile.close();
+#if CHECK_EEPROM_UPDATE_ENABLED
+            EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
+            return;
+        }
+
+        if(readed_char == '\n') {
+            sd_file_checksum = atoll(buffer_line);
+            break;
+        }
+        else {
+            if(readed_char == '\r')
+                continue;
+
+            buffer_line[i++] = readed_char;
+        }
+    }
+
+    serial->print("FlasherX: Checksum value: ");
+    serial->println(sd_file_checksum);
+
+    checkfile.close();
+
     FsFile hexFile;
     serial->println("FlasherX: SD initialization OK");
-    hexFile = SD_flash.open( HEX_FILE_NAME, FILE_READ );
+    hexFile = SD_flash.open(FLASHERX_HEX_FILE_NAME, FILE_READ);
     if (!hexFile) {
         serial->println("FlasherX: SD file open failed");
         serial->println("FlasherX: abort flashing");
+        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
         SD_flash.end();
+#if CHECK_EEPROM_UPDATE_ENABLED
+        EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
         return;
     }
 
@@ -112,6 +178,9 @@ void FlasherX() {
     if (firmware_buffer_init(&buffer_addr, &buffer_size) == 0) {
         serial->printf("FlasherX: unable to create buffer\n");
         serial->flush();
+#if CHECK_EEPROM_UPDATE_ENABLED
+        EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
         return;
     }
   
@@ -119,10 +188,17 @@ void FlasherX() {
 
     // read hex file, write new firmware to flash, clean up, reboot
     update_firmware(&hexFile, serial, buffer_addr, buffer_size);
-  
+
+    SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+    SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+
     // return from update_firmware() means error or user abort, so clean up and
     // reboot to ensure that static vars get boot-up initialized before retry
     serial->printf("FlasherX: erase FLASH buffer / free RAM buffer...\n");
     firmware_buffer_free(buffer_addr, buffer_size);
     serial->flush();
+
+#if CHECK_EEPROM_UPDATE_ENABLED
+    EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
 }
