@@ -84,12 +84,6 @@ PROGMEM const uint8_t a[16][16][16][16][16] = A4;
 #endif
 
 void FlasherX() {
-#if CHECK_EEPROM_UPDATE_ENABLED
-    bool update_enabled = EEPROM.read(FLASHERX_EEPROM_ID); 
-    if(!update_enabled)
-        return;
-#endif
-
     pinMode(led, OUTPUT);	// assign output
     serial->printf("%s - %s %s\n", FLASHERX_VERSION, __DATE__, __TIME__ );
     serial->printf("FlasherX: WARNING: this can ruin your device!\n" );
@@ -107,6 +101,16 @@ void FlasherX() {
 #endif
         return;
     }
+
+#if CHECK_EEPROM_UPDATE_ENABLED
+    bool update_enabled = EEPROM.read(FLASHERX_EEPROM_ID); 
+    if(!update_enabled) {
+        serial->println("FlasherX: Update disabled");
+        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+        return;
+    }
+#endif
 
     FsFile checkfile = SD_flash.open(FLASHERX_CHECKSUM_FILE_NAME);
     if(!checkfile) {

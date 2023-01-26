@@ -130,6 +130,7 @@ void update_firmware( Stream *in, Stream *out,
   } 
 #endif
 
+#if !FLASHERX_EHEX_SUPPORT
   // check FLASH_ID in new code - abort if not found
   if (check_flash_id(buffer_addr, hex.max - hex.min)) {
     out->printf("FlasherX: new code contains correct target ID %s\n", FLASH_ID);
@@ -138,6 +139,7 @@ void update_firmware( Stream *in, Stream *out,
     out->printf("FlasherX: abort - new code missing string %s\n", FLASH_ID);
     return;
   }
+#endif
 
   if(is_sd_flash) {
     crc32_temp = crc_finalize(crc32_temp);

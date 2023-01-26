@@ -20,6 +20,8 @@ extern SdFat SD_flash;
 extern bool is_sd_flash;
 extern uint32_t sd_file_checksum;
 
+#define FLASHERX_EHEX_SUPPORT 1
+
 #define FLASHERX_HEX_FILE_NAME "FlasherX.hex"
 #define FLASHERX_CHECKSUM_FILE_NAME "checksum.txt"
 
