@@ -12,7 +12,7 @@
 /*#include <SD.h>*/
 #define SD_flash SD
 #else
-#include <sdfat.h>
+#include <SdFat.h>
 extern SdFat SD_flash;
 #define BUILTIN_SDCARD SdioConfig(DMA_SDIO)
 #endif
