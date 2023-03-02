@@ -44,13 +44,17 @@ int firmware_buffer_init( uint32_t *buffer_addr, uint32_t *buffer_size )
 
 #if defined(__IMXRT1062__) && (PSRAM_BUFFER_SIZE > 0)
   // attempt to malloc() RAM for buffer and return success or failure
-  *buffer_addr = (uint32_t)extmem_malloc( PSRAM_BUFFER_SIZE );
-  if (*buffer_addr != 0) {
-    *buffer_size = PSRAM_BUFFER_SIZE;
-    memset( (void*)*buffer_addr, 0xFF, *buffer_size ); // 0xFF like erased flash
-    return( PSRAM_BUFFER_TYPE );
+  if(external_psram_size > 0) {
+    *buffer_addr = (uint32_t)extmem_malloc( PSRAM_BUFFER_SIZE );
+    if (*buffer_addr != 0) {
+        *buffer_size = PSRAM_BUFFER_SIZE;
+        memset( (void*)*buffer_addr, 0xFF, *buffer_size ); // 0xFF like erased flash
+        return( PSRAM_BUFFER_TYPE );
+    }
+    else {
+        return( NO_BUFFER_TYPE );
+    }
   }
-  return( NO_BUFFER_TYPE );
 #endif
 
   // buffer will begin at first sector ABOVE code and below FLASH_RESERVE

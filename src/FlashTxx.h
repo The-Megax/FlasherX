@@ -58,6 +58,7 @@
   #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE)	// reserve top of flash
   #define FLASH_BASE_ADDR	(0x60000000)		// code starts here
 #elif defined(__IMXRT1062__) && defined(ARDUINO_TEENSY41)
+  extern uint8_t external_psram_size;
   #define FLASH_ID		"fw_teensy41"		// target ID (in code)
   #define FLASH_SIZE		(0x800000)		// 8MB
   #define FLASH_SECTOR_SIZE	(0x1000)		// 4KB sector size
