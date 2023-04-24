@@ -130,15 +130,26 @@ void update_firmware( Stream *in, Stream *out,
   } 
 #endif
 
-  if(!is_secure) {
-    // check FLASH_ID in new code - abort if not found
-    if (check_flash_id(buffer_addr, hex.max - hex.min)) {
+  // check FLASH_ID in new code - abort if not found
+  if (check_flash_id(buffer_addr, hex.max - hex.min)) {
+    if(is_secure) {
+	  // TODO: valid check?
+	  out->printf("FlasherX: abort - not secure version\n");
+	  return;
+	}
+	else {
       out->printf("FlasherX: new code contains correct target ID %s\n", FLASH_ID);
-    }
-    else {
+	}
+  }
+  else {
+    if(is_secure) {
+	  // TODO: valid check?
+	  out->printf("FlasherX: valid secure version\n");
+	}
+	else {
       out->printf("FlasherX: abort - new code missing string %s\n", FLASH_ID);
       return;
-    }
+	}
   }
 
   if(is_sd_flash) {
