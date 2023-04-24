@@ -38,13 +38,13 @@ int  parse_hex_line( const char *theline, char *bytes,
 	unsigned int *addr, unsigned int *num, unsigned int *code );
 int  process_hex_record( hex_info_t *hex );
 void update_firmware( Stream *in, Stream *out,
-			uint32_t buffer_addr, uint32_t buffer_size );
+			uint32_t buffer_addr, uint32_t buffer_size, bool is_secure);
 
 //******************************************************************************
 // update_firmware()	read hex file and write new firmware to program flash
 //******************************************************************************
 void update_firmware( Stream *in, Stream *out, 
-				uint32_t buffer_addr, uint32_t buffer_size )
+				uint32_t buffer_addr, uint32_t buffer_size, bool is_secure)
 {
   static char line[96];					// buffer for hex lines
   static char data[32] __attribute__ ((aligned (8)));	// buffer for hex data
@@ -130,16 +130,16 @@ void update_firmware( Stream *in, Stream *out,
   } 
 #endif
 
-#if !FLASHERX_EHEX_SUPPORT
-  // check FLASH_ID in new code - abort if not found
-  if (check_flash_id(buffer_addr, hex.max - hex.min)) {
-    out->printf("FlasherX: new code contains correct target ID %s\n", FLASH_ID);
+  if(!is_secure) {
+    // check FLASH_ID in new code - abort if not found
+    if (check_flash_id(buffer_addr, hex.max - hex.min)) {
+      out->printf("FlasherX: new code contains correct target ID %s\n", FLASH_ID);
+    }
+    else {
+      out->printf("FlasherX: abort - new code missing string %s\n", FLASH_ID);
+      return;
+    }
   }
-  else {
-    out->printf("FlasherX: abort - new code missing string %s\n", FLASH_ID);
-    return;
-  }
-#endif
 
   if(is_sd_flash) {
     crc32_temp = crc_finalize(crc32_temp);

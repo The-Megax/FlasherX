@@ -25,6 +25,6 @@ extern uint32_t sd_file_checksum;
 #define FLASHERX_HEX_FILE_NAME "FlasherX.hex"
 #define FLASHERX_CHECKSUM_FILE_NAME "checksum.txt"
 
-void FlasherX();
+void FlasherX(bool is_secure);
 
 #endif

@@ -83,7 +83,7 @@ Stream *serial = &Serial;	// Serial (USB) or Serial1, Serial2, etc. (UART)
 PROGMEM const uint8_t a[16][16][16][16][16] = A4;
 #endif
 
-void FlasherX() {
+void FlasherX(bool is_secure) {
     pinMode(led, OUTPUT);	// assign output
     serial->printf("%s - %s %s\n", FLASHERX_VERSION, __DATE__, __TIME__ );
     serial->printf("FlasherX: WARNING: this can ruin your device!\n" );
@@ -191,7 +191,7 @@ void FlasherX() {
     serial->printf("FlasherX: created buffer = %1luK %s (%08lX - %08lX)\n", buffer_size/1024, IN_FLASH(buffer_addr) ? "FLASH" : "RAM", buffer_addr, buffer_addr + buffer_size);
 
     // read hex file, write new firmware to flash, clean up, reboot
-    update_firmware(&hexFile, serial, buffer_addr, buffer_size);
+    update_firmware(&hexFile, serial, buffer_addr, buffer_size, is_secure);
 
     SD_flash.remove(FLASHERX_HEX_FILE_NAME);
     SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
