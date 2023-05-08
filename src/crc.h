@@ -70,8 +70,7 @@ typedef uint_fast32_t crc_t;
  *
  * \return     The initial crc value.
  */
-static inline crc_t crc_init(void)
-{
+static inline crc_t crc_init(void) {
     return 0xffffffff;
 }
 
@@ -79,12 +78,13 @@ static inline crc_t crc_init(void)
 /**
  * Update the crc value with new data.
  *
- * \param[in] crc      The current crc value.
- * \param[in] data     Pointer to a buffer of \a data_len bytes.
- * \param[in] data_len Number of bytes in the \a data buffer.
- * \return             The updated crc value.
+ * \param[in] crc       The current crc value.
+ * \param[in] data      Pointer to a buffer of \a data_len bytes.
+ * \param[in] data_len  Number of bytes in the \a data buffer.
+ * \param[in] start_len Start byte bytes in the \a data buffer.
+ * \return              The updated crc value.
  */
-crc_t crc_update(crc_t crc, const void *data, size_t data_len);
+crc_t crc_update(crc_t crc, const void *data, size_t data_len, size_t start_len = 0);
 
 
 /**
@@ -93,8 +93,7 @@ crc_t crc_update(crc_t crc, const void *data, size_t data_len);
  * \param[in] crc  The current crc value.
  * \return     The final crc value.
  */
-static inline crc_t crc_finalize(crc_t crc)
-{
+static inline crc_t crc_finalize(crc_t crc) {
     return crc ^ 0xffffffff;
 }
 
