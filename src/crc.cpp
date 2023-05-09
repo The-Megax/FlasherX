@@ -64,15 +64,20 @@ static const crc_t crc_table[256] = {
 crc_t crc_update(crc_t crc, const void *data, size_t data_len, size_t start_len) {
     const unsigned char *d = (const unsigned char *)data;
     unsigned int tbl_idx;
+    size_t it = 0;
 
-    while (data_len-- && data_len >= start_len) {
-        tbl_idx = (crc ^ *d) & 0xff;
+    while (data_len--) {
+        if (it >= start_len) {
+            tbl_idx = (crc ^ *d) & 0xff;
 #ifdef ARDUINO_ARCH_AVR
-        crc = (pgm_read_dword(crc_table + tbl_idx) ^ (crc >> 8)) & 0xffffffff;
+            crc = (pgm_read_dword(crc_table + tbl_idx) ^ (crc >> 8)) & 0xffffffff;
 #else
-        crc = (crc_table[tbl_idx] ^ (crc >> 8)) & 0xffffffff;
+            crc = (crc_table[tbl_idx] ^ (crc >> 8)) & 0xffffffff;
 #endif
+        }
+
         d++;
+        it++;
     }
 
     return crc & 0xffffffff;
