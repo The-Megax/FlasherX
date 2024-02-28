@@ -65,7 +65,7 @@ void update_firmware( Stream *in, Stream *out,
   const int led = LED_BUILTIN;
 
   // read and process intel hex lines until EOF or error
-  while (!hex.eof)  {
+  while (!hex.eof && in->available())  {
     if(is_led_high) {
       digitalWrite(led, HIGH);
     }
