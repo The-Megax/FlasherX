@@ -93,7 +93,7 @@ void FlasherX(bool is_secure) {
     serial->printf("FlasherX: Large Array -- %08lX\n", (uint32_t)&a[15][15][15][15][15]);
 #endif
 
-    if (!SD_flash.begin(BUILTIN_SDCARD)) {
+    if (!SD_flash.begin(FLASHERX_BUILTIN_SDCARD)) {
         serial->println("FlasherX: SD initialization failed");
         serial->println("FlasherX: abort flashing");
 #if CHECK_EEPROM_UPDATE_ENABLED

@@ -14,7 +14,7 @@
 #else
 #include <SdFat.h>
 extern SdFat SD_flash;
-#define BUILTIN_SDCARD SdioConfig(DMA_SDIO)
+#define FLASHERX_BUILTIN_SDCARD SdioConfig(DMA_SDIO)
 #endif
 
 extern bool is_sd_flash;
