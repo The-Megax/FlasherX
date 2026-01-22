@@ -106,8 +106,8 @@ void FlasherX(bool is_secure) {
     bool update_enabled = EEPROM.read(FLASHERX_EEPROM_ID); 
     if(!update_enabled) {
         serial->println("FlasherX: Update disabled");
-        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+        //SD_flash.remove(FLASHERX_HEX_FILE_NAME);
+        //SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
         return;
     }
 #endif
