@@ -5,20 +5,16 @@
 #define DISABLE_CODE_CHECK 1
 #define CHECK_EEPROM_UPDATE_ENABLED 1
 #define FLASHERX_EEPROM_ID 100
+#define FLASHERX_FILESYSTEM_EEPROM_ID 105
 
 #include "crc.h"
+#include "FlasherXStorage.h"
 
-#if NATIVE_SD
 /*#include <SD.h>*/
-#define SD_flash SD
-#else
-#include <SdFat.h>
-extern SdFat SD_flash;
-#define FLASHERX_BUILTIN_SDCARD SdioConfig(DMA_SDIO)
-#endif
 
 extern bool is_sd_flash;
 extern uint32_t sd_file_checksum;
+extern FileSystemType flasherx_update_file_system_type;
 
 #define FLASHERX_EHEX_SUPPORT 1
 
@@ -26,5 +22,6 @@ extern uint32_t sd_file_checksum;
 #define FLASHERX_CHECKSUM_FILE_NAME "checksum.txt"
 
 void FlasherX(bool is_secure);
+void FlasherXRemoveUpdateFiles();
 
 #endif

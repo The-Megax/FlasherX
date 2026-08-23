@@ -59,9 +59,7 @@ extern "C" {
 
 bool is_sd_flash = true;
 uint32_t sd_file_checksum = 0;
-#if !NATIVE_SD
-SdFat SD_flash;
-#endif
+FileSystemType flasherx_update_file_system_type = FileSystemType::SdFat;
 
 const int led = LED_BUILTIN;	// LED pin
 Stream *serial = &Serial;	// Serial (USB) or Serial1, Serial2, etc. (UART)
@@ -83,6 +81,25 @@ Stream *serial = &Serial;	// Serial (USB) or Serial1, Serial2, etc. (UART)
 PROGMEM const uint8_t a[16][16][16][16][16] = A4;
 #endif
 
+namespace {
+bool hasUpdateFiles(FileSystemType type) {
+    return SD.beginBackend(type)
+        && SD.exists(type, FLASHERX_CHECKSUM_FILE_NAME)
+        && SD.exists(type, FLASHERX_HEX_FILE_NAME);
+}
+
+void clearUpdateRequest() {
+#if CHECK_EEPROM_UPDATE_ENABLED
+    EEPROM.write(FLASHERX_EEPROM_ID, 0);
+#endif
+}
+}
+
+void FlasherXRemoveUpdateFiles() {
+    SD.remove(flasherx_update_file_system_type, FLASHERX_HEX_FILE_NAME);
+    SD.remove(flasherx_update_file_system_type, FLASHERX_CHECKSUM_FILE_NAME);
+}
+
 void FlasherX(bool is_secure) {
     pinMode(led, OUTPUT);	// assign output
     serial->printf("%s - %s %s\n", FLASHERX_VERSION, __DATE__, __TIME__ );
@@ -93,37 +110,57 @@ void FlasherX(bool is_secure) {
     serial->printf("FlasherX: Large Array -- %08lX\n", (uint32_t)&a[15][15][15][15][15]);
 #endif
 
-    if (!SD_flash.begin(FLASHERX_BUILTIN_SDCARD)) {
-        serial->println("FlasherX: SD initialization failed");
-        serial->println("FlasherX: abort flashing");
-#if CHECK_EEPROM_UPDATE_ENABLED
-        EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
-        return;
-    }
-
 #if CHECK_EEPROM_UPDATE_ENABLED
     bool update_enabled = EEPROM.read(FLASHERX_EEPROM_ID); 
     if(!update_enabled) {
         serial->println("FlasherX: Update disabled");
-        //SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-        //SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+        //SD.remove(FileSystemType::SdFat, FLASHERX_HEX_FILE_NAME);
+        //SD.remove(FileSystemType::SdFat, FLASHERX_CHECKSUM_FILE_NAME);
         return;
     }
 #endif
 
-    FsFile checkfile = SD_flash.open(FLASHERX_CHECKSUM_FILE_NAME);
+    uint8_t configured_type = EEPROM.read(FLASHERX_FILESYSTEM_EEPROM_ID);
+    if(!HFileSystem::isValidType(configured_type))
+        configured_type = static_cast<uint8_t>(FileSystemType::SdFat);
+
+    flasherx_update_file_system_type = static_cast<FileSystemType>(configured_type);
+    if(!hasUpdateFiles(flasherx_update_file_system_type)) {
+        serial->printf(
+            "FlasherX: update files not found on %s\n",
+            HFileSystem::getTypeName(flasherx_update_file_system_type)
+        );
+
+        if(flasherx_update_file_system_type == FileSystemType::SdFat) {
+            serial->println("FlasherX: abort flashing");
+            clearUpdateRequest();
+            return;
+        }
+
+        serial->println("FlasherX: trying built-in SD fallback");
+        if(!hasUpdateFiles(FileSystemType::SdFat)) {
+            serial->println("FlasherX: update files not found on built-in SD");
+            serial->println("FlasherX: abort flashing");
+            clearUpdateRequest();
+            return;
+        }
+
+        flasherx_update_file_system_type = FileSystemType::SdFat;
+    }
+
+    serial->printf(
+        "FlasherX: update storage: %s\n",
+        HFileSystem::getTypeName(flasherx_update_file_system_type)
+    );
+
+    HFsFile checkfile = SD.open(flasherx_update_file_system_type, FLASHERX_CHECKSUM_FILE_NAME, FILE_READ);
     if(!checkfile) {
         serial->print("FlasherX: ");
         serial->print(FLASHERX_CHECKSUM_FILE_NAME);
         serial->println(" file open failed");
         serial->println("FlasherX: abort flashing");
-        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
-        SD_flash.end();
-#if CHECK_EEPROM_UPDATE_ENABLED
-        EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
+        FlasherXRemoveUpdateFiles();
+        clearUpdateRequest();
         return;
     }
 
@@ -136,9 +173,8 @@ void FlasherX(bool is_secure) {
         if(i >= sizeof(buffer_line)) {
             serial->println("FlasherX: sd read buffer overflow");
             checkfile.close();
-#if CHECK_EEPROM_UPDATE_ENABLED
-            EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
+            FlasherXRemoveUpdateFiles();
+            clearUpdateRequest();
             return;
         }
 
@@ -159,18 +195,14 @@ void FlasherX(bool is_secure) {
 
     checkfile.close();
 
-    FsFile hexFile;
-    serial->println("FlasherX: SD initialization OK");
-    hexFile = SD_flash.open(FLASHERX_HEX_FILE_NAME, FILE_READ);
+    HFsFile hexFile;
+    serial->println("FlasherX: storage initialization OK");
+    hexFile = SD.open(flasherx_update_file_system_type, FLASHERX_HEX_FILE_NAME, FILE_READ);
     if (!hexFile) {
         serial->println("FlasherX: SD file open failed");
         serial->println("FlasherX: abort flashing");
-        SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-        SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
-        SD_flash.end();
-#if CHECK_EEPROM_UPDATE_ENABLED
-        EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
+        FlasherXRemoveUpdateFiles();
+        clearUpdateRequest();
         return;
     }
 
@@ -182,9 +214,8 @@ void FlasherX(bool is_secure) {
     if (firmware_buffer_init(&buffer_addr, &buffer_size) == 0) {
         serial->printf("FlasherX: unable to create buffer\n");
         serial->flush();
-#if CHECK_EEPROM_UPDATE_ENABLED
-        EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
+        FlasherXRemoveUpdateFiles();
+        clearUpdateRequest();
         return;
     }
   
@@ -193,8 +224,7 @@ void FlasherX(bool is_secure) {
     // read hex file, write new firmware to flash, clean up, reboot
     update_firmware(&hexFile, serial, buffer_addr, buffer_size, is_secure);
 
-    SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-    SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+    FlasherXRemoveUpdateFiles();
 
     // return from update_firmware() means error or user abort, so clean up and
     // reboot to ensure that static vars get boot-up initialized before retry
@@ -202,7 +232,5 @@ void FlasherX(bool is_secure) {
     firmware_buffer_free(buffer_addr, buffer_size);
     serial->flush();
 
-#if CHECK_EEPROM_UPDATE_ENABLED
-    EEPROM.write(FLASHERX_EEPROM_ID, 0);
-#endif
+    clearUpdateRequest();
 }

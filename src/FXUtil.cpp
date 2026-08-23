@@ -187,8 +187,7 @@ void update_firmware( Stream *in, Stream *out,
 #endif
 
   if(is_sd_flash) {
-    SD_flash.remove(FLASHERX_HEX_FILE_NAME);
-    SD_flash.remove(FLASHERX_CHECKSUM_FILE_NAME);
+    FlasherXRemoveUpdateFiles();
   }
 
 #if CHECK_EEPROM_UPDATE_ENABLED
