@@ -62,6 +62,7 @@ public:
         HFileSystemCopyStats* stats = nullptr
     );
 
+    bool ls(FileSystemType type, const char* path, Print* output = nullptr);
     void ls(const char* path, uint8_t flags = 0, Print* output = nullptr);
     void errorPrint(print_t* output, const char* message);
     void errorPrint(print_t* output, const __FlashStringHelper* message);

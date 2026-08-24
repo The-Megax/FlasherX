@@ -519,6 +519,44 @@ FLASHMEM bool HFileSystem::copy(
     return result;
 }
 
+FLASHMEM bool HFileSystem::ls(FileSystemType type, const char* path, Print* output) {
+    if(path == nullptr || path[0] != '/')
+        return false;
+
+    if(output == nullptr)
+        output = &Serial;
+
+    HFsFile directory = open(type, path, FILE_READ);
+    if(!directory || !directory.isDirectory()) {
+        directory.close();
+        return false;
+    }
+
+    while(true) {
+        HFsFile entry = directory.openNextFile(FILE_READ);
+        if(!entry)
+            break;
+
+        bool is_directory = entry.isDirectory();
+        output->print(is_directory ? F("[DIR] ") : F("[FILE] "));
+        output->print(entry.name());
+
+        if(is_directory) {
+            output->println();
+        }
+        else {
+            output->print(F(" ("));
+            output->print(entry.size());
+            output->println(F(" bytes)"));
+        }
+
+        entry.close();
+    }
+
+    directory.close();
+    return true;
+}
+
 void HFileSystem::ls(const char* path, uint8_t flags, Print* output) {
     if(output == nullptr)
         output = &Serial;
@@ -529,16 +567,7 @@ void HFileSystem::ls(const char* path, uint8_t flags, Print* output) {
         return;
     }
 
-    HFsFile directory = open(path, FILE_READ);
-    while(directory) {
-        HFsFile entry = directory.openNextFile();
-        if(!entry)
-            break;
-
-        output->println(entry.name());
-        entry.close();
-    }
-    directory.close();
+    ls(_type, path, output);
 }
 
 void HFileSystem::errorPrint(print_t* output, const char* message) {
