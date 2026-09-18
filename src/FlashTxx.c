@@ -409,6 +409,40 @@ int flash_write_block( uint32_t addr, char *data, uint32_t count )
   return 0;						// return success
 }
 
+#if defined(__IMXRT1062__)
+
+RAMFUNC int flash_erase_region(uint32_t address, uint32_t size, uint32_t region_begin, uint32_t region_end)
+{
+  if (region_begin < FLASH_BASE_ADDR || region_end > FLASH_BASE_ADDR + FLASH_SIZE - FLASH_RESERVE || region_begin >= region_end || address < region_begin || address >= region_end || size == 0 || size > region_end - address || (address % FLASH_SECTOR_SIZE) || (size % FLASH_SECTOR_SIZE)) return 1;
+  for (uint32_t offset = 0; offset < size; offset += FLASH_SECTOR_SIZE) {
+    eepromemu_flash_erase_sector((void *)(address + offset));
+    if (flash_sector_not_erased(address + offset)) return 2;
+  }
+  return 0;
+}
+
+RAMFUNC int flash_write_region(uint32_t address, const uint8_t* data, uint32_t size, uint32_t region_begin, uint32_t region_end)
+{
+  if (!data || region_begin < FLASH_BASE_ADDR || region_end > FLASH_BASE_ADDR + FLASH_SIZE - FLASH_RESERVE || region_begin >= region_end || address < region_begin || address >= region_end || size == 0 || size > region_end - address) return 1;
+  uint32_t offset = 0;
+  while (offset < size) {
+    uint32_t count = 256 - ((address + offset) & 255);
+    if (count > size - offset) count = size - offset;
+    for (uint32_t i = 0; i < count; i++) {
+      uint8_t old = *(volatile uint8_t *)(address + offset + i);
+      if ((old & data[offset + i]) != data[offset + i]) return 2;
+    }
+    eepromemu_flash_write((void *)(address + offset), data + offset, count);
+    for (uint32_t i = 0; i < count; i++) {
+      if (*(volatile uint8_t *)(address + offset + i) != data[offset + i]) return 3;
+    }
+    offset += count;
+  }
+  return 0;
+}
+
+#endif
+
 #if defined(__MK66FX1M0__) // T3.6 only
 
   // MCU Local Memory PCCCR Register Bit Definitions (request to add to kinetis.h?)

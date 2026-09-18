@@ -42,6 +42,8 @@ public:
     HFsFile openSdFat(const char* path, int mode = FILE_READ);
     bool isOpen(HFsFile& file) const;
     void getName(HFsFile& file, char* buffer, size_t buffer_size) const;
+    uint64_t totalSize(FileSystemType type);
+    uint64_t usedSize(FileSystemType type);
 
     bool exists(const char* path);
     bool exists(FileSystemType type, const char* path);

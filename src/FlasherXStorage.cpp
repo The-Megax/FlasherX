@@ -402,6 +402,31 @@ void HFileSystem::getName(HFsFile& file, char* buffer, size_t buffer_size) const
     strlcpy(buffer, file.name(), buffer_size);
 }
 
+uint64_t HFileSystem::totalSize(FileSystemType type) {
+    if(!beginBackend(type))
+        return 0;
+
+    if(type == FileSystemType::LittleFS_QPINAND)
+        return _little_fs->totalSize();
+
+    return static_cast<uint64_t>(_sd_fat->clusterCount()) * _sd_fat->bytesPerCluster();
+}
+
+uint64_t HFileSystem::usedSize(FileSystemType type) {
+    if(!beginBackend(type))
+        return 0;
+
+    if(type == FileSystemType::LittleFS_QPINAND)
+        return _little_fs->usedSize();
+
+    const int32_t free_clusters = _sd_fat->freeClusterCount();
+    const uint32_t clusters = _sd_fat->clusterCount();
+    if(free_clusters < 0 || static_cast<uint32_t>(free_clusters) > clusters)
+        return totalSize(type);
+
+    return static_cast<uint64_t>(clusters - free_clusters) * _sd_fat->bytesPerCluster();
+}
+
 bool HFileSystem::exists(const char* path) {
     return exists(_type, path);
 }

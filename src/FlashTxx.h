@@ -135,6 +135,12 @@ RAMFUNC void flash_move( uint32_t dst, uint32_t src, uint32_t size );
 int  flash_write_block( uint32_t addr, char *data, uint32_t count );
 int  flash_erase_block( uint32_t address, uint32_t size );
 
+#if defined(__IMXRT1062__)
+// Bounded primitives for an independent updater. No selection, file I/O or reboot.
+RAMFUNC int flash_erase_region(uint32_t address, uint32_t size, uint32_t region_begin, uint32_t region_end);
+RAMFUNC int flash_write_region(uint32_t address, const uint8_t* data, uint32_t size, uint32_t region_begin, uint32_t region_end);
+#endif
+
 int  check_flash_id( uint32_t buffer, uint32_t size );
 int  firmware_buffer_init( uint32_t *buffer_addr, uint32_t *buffer_size );
 void firmware_buffer_free( uint32_t buffer_addr, uint32_t buffer_size );
