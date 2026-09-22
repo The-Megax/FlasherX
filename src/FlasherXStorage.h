@@ -9,6 +9,20 @@
 #endif
 
 #include <Arduino.h>
+
+// Teensy core FS.h defines these (0/1) the first time it is included; if that
+// already happened earlier in this translation unit, its own header guard
+// makes any later re-include (including the LittleFS.h one below) a no-op,
+// so the undef above would otherwise leave them gone for good. Restate the
+// same values explicitly so LittleFS.h always sees them, regardless of what
+// else in this translation unit pulled FS.h in first.
+#ifndef FILE_READ
+#define FILE_READ 0
+#endif
+#ifndef FILE_WRITE
+#define FILE_WRITE 1
+#endif
+
 #include <LittleFS.h>
 #include <SdFat.h>
 #include <sdios.h>
