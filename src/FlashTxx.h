@@ -55,7 +55,8 @@
   #define FLASH_SIZE		(0x200000)		// 2MB program flash
   #define FLASH_SECTOR_SIZE	(0x1000)		// 4KB sector size
   #define FLASH_WRITE_SIZE	(4)			// 4-byte/32-bit writes
-  #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE)	// reserve top of flash
+  #define FLASH_EPPROM_SIZE (256*1024) // EPPROM SIZE
+  #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE + FLASH_EPPROM_SIZE)	// reserve top of flash 
   #define FLASH_BASE_ADDR	(0x60000000)		// code starts here
 #elif defined(__IMXRT1062__) && defined(ARDUINO_TEENSY41)
   extern uint8_t external_psram_size;
@@ -63,7 +64,7 @@
   #define FLASH_SIZE		(0x800000)		// 8MB
   #define FLASH_SECTOR_SIZE	(0x1000)		// 4KB sector size
   #define FLASH_WRITE_SIZE	(4)			// 4-byte/32-bit writes    
-  #define FLASH_EPPROM_SIZE (0x3C000) // EPPROM SIZE
+  #define FLASH_EPPROM_SIZE (256*1024) // EPPROM SIZE
   #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE + FLASH_EPPROM_SIZE)	// reserve top of flash 
   #define FLASH_BASE_ADDR	(0x60000000)		// code starts here
 #elif defined(__IMXRT1062__) && defined(ARDUINO_TEENSY_MICROMOD)
@@ -71,7 +72,8 @@
   #define FLASH_SIZE		(0x1000000)		// 16MB
   #define FLASH_SECTOR_SIZE	(0x1000)		// 4KB sector size
   #define FLASH_WRITE_SIZE	(4)			// 4-byte/32-bit writes    
-  #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE)	// reserve top of flash 
+  #define FLASH_EPPROM_SIZE (256*1024) // EPPROM SIZE
+  #define FLASH_RESERVE		(4*FLASH_SECTOR_SIZE + FLASH_EPPROM_SIZE)	// reserve top of flash 
   #define FLASH_BASE_ADDR	(0x60000000)		// code starts here
 #else
   #error MCU NOT SUPPORTED
