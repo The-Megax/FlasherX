@@ -118,15 +118,19 @@ int check_flash_id( uint32_t buffer, uint32_t size )
 #define FTFL_READ_MARGIN_USER		(0x01)
 #define FTFL_READ_MARGIN_FACTORY	(0x02)
 
-RAMFUNC static void flash_exec( void ) 
+RAMFUNC static void flash_exec( void )
 {
+  // kinetis_hsrun_disable/enable() are in flash (F_CPU > 120 MHz): during
+  // flash_move() they can be erased, so there HSRUN is disabled once at start
   __disable_irq();				// disable interrupts
-  kinetis_hsrun_disable();			// disable high-speed run
+  if (!leave_interrupts_disabled)		// if not in flash_move()
+    kinetis_hsrun_disable();			//   disable high-speed run
   FTFL_FSTAT = FTFL_FSTAT_CCIF;			// execute!
   while (!(FTFL_FSTAT & FTFL_FSTAT_CCIF)) {;}	// wait for done
-  kinetis_hsrun_enable();			// re-enable high-speed run
-  if (!leave_interrupts_disabled)		// if OK to enable interrupts
+  if (!leave_interrupts_disabled) {		// if not in flash_move()
+    kinetis_hsrun_enable();			//   re-enable high-speed run
     __enable_irq();				//   re-enable interrupts
+  }
 }
 
 RAMFUNC static void flash_init_command( uint8_t command, uint32_t address )
@@ -270,7 +274,13 @@ RAMFUNC void flash_move( uint32_t dst, uint32_t src, uint32_t size )
   uint32_t offset=0, error=0, addr;
   
   // set global flag leave_interrupts_disabled = 1 to prevent the T3.x flash
-  // write and erase functions from re-enabling interrupts when they complete 
+  // write and erase functions from re-enabling interrupts when they complete
+#if defined(KINETISK) || defined(KINETISL)
+  // disable high-speed run once, while the code in flash is still intact;
+  // stays in RUN mode until REBOOT (flash_exec() does not call into flash)
+  __disable_irq();
+  kinetis_hsrun_disable();
+#endif
   leave_interrupts_disabled = 1;
   
   // move size bytes containing new program from source to destination

@@ -118,6 +118,20 @@ void update_firmware( Stream *in, Stream *out,
   out->printf( "\nFlasherX: hex file: %1d lines %1lu bytes (%08lX - %08lX)\n",
 			hex.lines, hex.max-hex.min, hex.min, hex.max );
 
+  // T3.5/T3.6 write 8-byte phrases: flash_write_block() keeps a partial last
+  // phrase in its buffer, pad it with 0xFF so the last bytes are written too
+  // (else the last .data word, newlib environ, stays 0xFFFFFFFF -> crash at boot)
+  if (IN_FLASH(buffer_addr) && ((hex.max - FLASH_BASE_ADDR) % FLASH_WRITE_SIZE) != 0) {
+    char pad[FLASH_WRITE_SIZE];
+    memset(pad, 0xFF, sizeof(pad));
+    uint32_t pad_count = FLASH_WRITE_SIZE - ((hex.max - FLASH_BASE_ADDR) % FLASH_WRITE_SIZE);
+    int error = flash_write_block(buffer_addr + hex.max - FLASH_BASE_ADDR, pad, pad_count);
+    if (error) {
+      out->printf( "FlasherX: abort - error %02X in flash_write_block() padding\n", error );
+      return;
+    }
+  }
+
   // check FSEC value in new code -- abort if incorrect
 #if defined(KINETISK) || defined(KINETISL)
   uint32_t value = *(uint32_t *)(0x40C + buffer_addr);
